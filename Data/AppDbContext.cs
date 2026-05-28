@@ -14,5 +14,6 @@ namespace LojaApi.Data
         // Novas tabelas da avaliação:
         public DbSet<Fornecedor> Fornecedores { get; set; }
         public DbSet<Vendedor> Vendedores { get; set; }
+        public DbSet<Cliente> Clientes { get; set; }
     }
 }

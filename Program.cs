@@ -4,8 +4,18 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
-
 var builder = WebApplication.CreateBuilder(args);
+
+// ================== CONFIGURAÇÃO DO CORS ADICIONADA AQUI ==================
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReact",
+        policy => policy.WithOrigins("http://localhost:3000") // Permite o seu React acessar a API
+                        .AllowAnyMethod()                     // Permite GET, POST, PUT, DELETE
+                        .AllowAnyHeader());                    // Permite cabeçalhos como Authorization
+});
+// =========================================================================
+
 builder.Services.AddControllers();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(
@@ -36,7 +46,7 @@ builder.Services.AddSwaggerGen(c =>
             {
                 Reference = new Microsoft.OpenApi.Models.OpenApiReference
                 {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme, // <--- Correção aqui!
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
                     Id = "Bearer"
                 }
             },
@@ -44,7 +54,6 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
-
 
 // Chave secreta do token (Mantenha a mesma no Controller)
 var chaveJwt = "MINHA_CHAVE_SUPER_SECRETA_123456";
@@ -65,18 +74,21 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-app.UseAuthentication(); // OBRIGATÓRIO: Verifica quem é o usuário
-app.UseAuthorization();  // OBRIGATÓRIO: Verifica o que ele pode fazer
-// ================== COLE ESTE BLOCO AQUI ==================
+// A criação automática do banco deve rodar logo no início do app
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    // Ele lê suas Models e cria as tabelas direto no MySQL se elas não existirem!
     context.Database.EnsureCreated(); 
 }
-// ==========================================================
 
+// Configurações globais do servidor de requisições
 app.UseSwagger();
 app.UseSwaggerUI();
+
+// 🚨 IMPORTANTE: A ORDEM DOS PROXIMOS 3 COMANDOS NAO PODE SER ALTERADA!
+app.UseCors("AllowReact");       // 1º Libera o acesso para o navegador
+app.UseAuthentication();        // 2º Verifica quem é o usuário (Token)
+app.UseAuthorization();         // 3º Verifica as permissões dele
+
 app.MapControllers();
 app.Run();
